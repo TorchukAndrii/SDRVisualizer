@@ -26,7 +26,7 @@
         </StackPanel>
         
         <Image x:Name="SpectrumImage" 
-               Stretch="Uniform"
+               Stretch="Fill"
                VerticalAlignment="Stretch"
                HorizontalAlignment="Stretch"
                Margin="5" 

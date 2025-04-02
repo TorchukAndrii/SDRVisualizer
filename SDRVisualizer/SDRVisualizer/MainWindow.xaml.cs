@@ -24,7 +24,12 @@ namespace SDRVisualizer
             InitializeComponent();
             _dataGenerator = new FFTDataGenerator();
             SizeChanged += OnSizeChanged;
-            InitializeBitmaps();
+
+            Loaded += (s, e) => 
+            {
+                InitializeBitmaps();
+                RenderSpectrum();
+            };
         }
 
         private void InitializeBitmaps()
@@ -104,20 +109,20 @@ namespace SDRVisualizer
 
                 for (int i = 0; i <= 10; i++)
                 {
-                    double y = gridPadding + i * (gridHeight / 10.0);
+                    double y = gridPadding + (10 - i) * (gridHeight / 10.0); 
                     dc.DrawLine(gridPen, new Point(gridPadding, y), new Point(width - gridPadding, y));
                     FormattedText powerText = new((-120 + i * 10) + " dBm", CultureInfo.InvariantCulture, FlowDirection.LeftToRight, typeface, fontSize, textBrush, 1.0);
                     dc.DrawText(powerText, new Point(gridPadding - powerText.Width - 5, y - powerText.Height / 2));
                 }
-
+                
                 Pen spectrumPen = new(Brushes.Yellow, 1);
                 double step = gridWidth / 1024.0;
                 for (int i = 1; i < spectrumData.Count; i++)
                 {
                     double x1 = gridPadding + (i - 1) * step;
-                    double y1 = gridPadding + (gridHeight - ((spectrumData[i - 1] + 120) * gridHeight / 100));
+                    double y1 = gridPadding + ((spectrumData[i - 1] + 120) * gridHeight / 100);
                     double x2 = gridPadding + i * step;
-                    double y2 = gridPadding + (gridHeight - ((spectrumData[i] + 120) * gridHeight / 100));
+                    double y2 = gridPadding + ((spectrumData[i] + 120) * gridHeight / 100);
                     dc.DrawLine(spectrumPen, new Point(x1, y1), new Point(x2, y2));
                 }
             }
