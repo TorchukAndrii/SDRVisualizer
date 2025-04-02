@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -12,20 +13,32 @@ namespace SDRVisualizer
 {
     public partial class MainWindow : Window
     {
-        private readonly int width = 1024;
-        private readonly int height = 200;
-        private WriteableBitmap waterfallBitmap;
+        private WriteableBitmap spectrumBitmap;
         private readonly List<int> spectrumData = new();
-        private readonly List<int[]> waterfallData = new();
         private bool isRunning = false;
         private CancellationTokenSource cancellationTokenSource;
-        private Random rand = new();
+        private FFTDataGenerator _dataGenerator;
 
         public MainWindow()
         {
             InitializeComponent();
-            waterfallBitmap = new WriteableBitmap(width, height, 96, 96, PixelFormats.Rgb24, null);
-            //WaterfallImage.Source = waterfallBitmap;
+            _dataGenerator = new FFTDataGenerator();
+            SizeChanged += OnSizeChanged;
+            InitializeBitmaps();
+        }
+
+        private void InitializeBitmaps()
+        {
+            int width = (int)Math.Max(SpectrumImage.ActualWidth, 1);
+            int height = (int)Math.Max(SpectrumImage.ActualHeight, 1);
+            spectrumBitmap = new WriteableBitmap(width, height, 96, 96, PixelFormats.Pbgra32, null);
+            SpectrumImage.Source = spectrumBitmap;
+        }
+
+        private void OnSizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            InitializeBitmaps();
+            RenderSpectrum();
         }
 
         private void Start_Click(object sender, RoutedEventArgs e)
@@ -46,84 +59,74 @@ namespace SDRVisualizer
 
         private async Task GenerateData(CancellationToken token)
         {
-            double phaseShift = 0;
             while (!token.IsCancellationRequested)
             {
-                /*spectrumData.Clear();
-                int prev = rand.Next(-120, -20);
-                for (int i = 0; i < width; i++)
-                {
-                    double frequency = 90 + (20.0 * i / width);
-                    double signal = -60 + 30 * Math.Sin(2 * Math.PI * (frequency + phaseShift) / 10);
-                    double noise = rand.NextDouble() * 10 - 5;
-                    double power = Math.Max(-120, Math.Min(-20, signal + noise));
-                    spectrumData.Add((int)power);
-                }
-                phaseShift += 0.2;*/
-                if (spectrumData.Count == 0)
-                {
-                    for (int i = 0; i < width; i++)
-                    {
-                        double frequency = 90 + (20.0 * i / width);
-                        double signal = -60 + 30 * Math.Sin(2 * Math.PI * (frequency + phaseShift) / 10);
-                        double noise = rand.NextDouble() * 10 - 5;
-                        double power = Math.Max(-120, Math.Min(-20, signal + noise));
-                        spectrumData.Add((int)power);
-                    }
-                }
-                await Dispatcher.InvokeAsync(() =>
-                {
-                    RenderSpectrum();
-                    //UpdateWaterfall();
-                });
+                spectrumData.Clear();
+                spectrumData.AddRange(_dataGenerator.GetRow());
+                await Dispatcher.InvokeAsync(RenderSpectrum);
                 await Task.Delay(50, token);
             }
         }
 
         private void RenderSpectrum()
         {
+            int width = (int)SpectrumImage.ActualWidth;
+            int height = (int)SpectrumImage.ActualHeight;
+            if (width == 0 || height == 0) return;
+
+            spectrumBitmap = new WriteableBitmap(width, height, 96, 96, PixelFormats.Pbgra32, null);
+            SpectrumImage.Source = spectrumBitmap;
+            spectrumBitmap.Lock();
+
+            Int32Rect rect = new(0, 0, width, height);
+            int stride = width * 4;
+            byte[] pixels = new byte[stride * height];
+
+            double gridPadding = 50;
+            double gridWidth = width - 2 * gridPadding;
+            double gridHeight = height - 2 * gridPadding;
+
             DrawingVisual visual = new();
             using (DrawingContext dc = visual.RenderOpen())
             {
-                dc.DrawRectangle(Brushes.Transparent, null, new Rect(0, 0, width, height));
-                Pen spectrumPen = new Pen(Brushes.Yellow, 1);
+                Pen gridPen = new(Brushes.LightGray, 0.5);
+                Typeface typeface = new("Arial");
+                Brush textBrush = Brushes.White;
+                double fontSize = 10;
+
+                for (int i = 0; i <= 20; i++)
+                {
+                    double x = gridPadding + i * (gridWidth / 20.0);
+                    dc.DrawLine(gridPen, new Point(x, gridPadding), new Point(x, height - gridPadding));
+                    FormattedText freqText = new((90 + i) + " MHz", CultureInfo.InvariantCulture, FlowDirection.LeftToRight, typeface, fontSize, textBrush, 1.0);
+                    dc.DrawText(freqText, new Point(x - freqText.Width / 2, height - gridPadding + 5));
+                }
+
+                for (int i = 0; i <= 10; i++)
+                {
+                    double y = gridPadding + i * (gridHeight / 10.0);
+                    dc.DrawLine(gridPen, new Point(gridPadding, y), new Point(width - gridPadding, y));
+                    FormattedText powerText = new((-120 + i * 10) + " dBm", CultureInfo.InvariantCulture, FlowDirection.LeftToRight, typeface, fontSize, textBrush, 1.0);
+                    dc.DrawText(powerText, new Point(gridPadding - powerText.Width - 5, y - powerText.Height / 2));
+                }
+
+                Pen spectrumPen = new(Brushes.Yellow, 1);
+                double step = gridWidth / 1024.0;
                 for (int i = 1; i < spectrumData.Count; i++)
                 {
-                    double x1 = (i - 1);
-                    double y1 = height - ((spectrumData[i - 1] + 120) * height / 100);
-                    double x2 = i;
-                    double y2 = height - ((spectrumData[i] + 120) * height / 100);
+                    double x1 = gridPadding + (i - 1) * step;
+                    double y1 = gridPadding + (gridHeight - ((spectrumData[i - 1] + 120) * gridHeight / 100));
+                    double x2 = gridPadding + i * step;
+                    double y2 = gridPadding + (gridHeight - ((spectrumData[i] + 120) * gridHeight / 100));
                     dc.DrawLine(spectrumPen, new Point(x1, y1), new Point(x2, y2));
                 }
             }
 
-            RenderTargetBitmap bitmap = new(width, height, 96, 96, PixelFormats.Pbgra32);
-            bitmap.Render(visual);
-            SpectrumImage.Source = bitmap;
+            RenderTargetBitmap targetBitmap = new(width, height, 96, 96, PixelFormats.Pbgra32);
+            targetBitmap.Render(visual);
+            targetBitmap.CopyPixels(rect, pixels, stride, 0);
+            spectrumBitmap.WritePixels(rect, pixels, stride, 0);
+            spectrumBitmap.Unlock();
         }
-
-        /*private void UpdateWaterfall()
-        {
-            if (waterfallData.Count >= height)
-            {
-                waterfallData.RemoveAt(0);
-            }
-            waterfallData.Add(spectrumData.ToArray());
-
-            int stride = width * 3;
-            byte[] pixels = new byte[height * stride];
-            for (int y = 0; y < waterfallData.Count; y++)
-            {
-                for (int x = 0; x < width; x++)
-                {
-                    byte intensity = (byte)((spectrumData[x] + 120) * 255 / 100);
-                    pixels[y * stride + x * 3 + 0] = (byte)(255 - intensity);
-                    pixels[y * stride + x * 3 + 1] = intensity;
-                    pixels[y * stride + x * 3 + 2] = (byte)(intensity / 2);
-                }
-            }
-
-            waterfallBitmap.WritePixels(new Int32Rect(0, 0, width, height), pixels, stride, 0);
-        }*/
     }
 }

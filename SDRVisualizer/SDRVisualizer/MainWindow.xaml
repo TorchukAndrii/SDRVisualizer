@@ -1,15 +1,35 @@
 ﻿<Window x:Class="SDRVisualizer.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Spectrum Analyzer" MinHeight="500" MinWidth="1050" Background="Black">
+        Title="Spectrum Analyzer" 
+        Background="Black"
+        SizeToContent="Manual">
+
     <Grid>
-        <StackPanel>
-            <Image x:Name="SpectrumImage" Width="2048" Height="200" VerticalAlignment="Top" Margin="5"/>
-            <!--<Image x:Name="WaterfallImage" Width="2048" Height="200" VerticalAlignment="Bottom" Margin="5"/>-->
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                <Button Content="Start" Click="Start_Click" Margin="10" Background="Gray" Foreground="White"/>
-                <Button Content="Stop" Click="Stop_Click" Margin="10" Background="Gray" Foreground="White"/>
-            </StackPanel>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        
+        <StackPanel Orientation="Horizontal" 
+                    HorizontalAlignment="Center" 
+                    Grid.Row="0" 
+                    Margin="10">
+            <Button Content="Start" Click="Start_Click" 
+                    Padding="10" Background="Gray" Foreground="White"/>
+            <Button Content="Stop" Click="Stop_Click" 
+                    Padding="10" Background="Gray" Foreground="White"/>
         </StackPanel>
+        
+        <Image x:Name="SpectrumImage" 
+               Stretch="Uniform"
+               VerticalAlignment="Stretch"
+               HorizontalAlignment="Stretch"
+               Margin="5" 
+               Grid.Row="1"/>
     </Grid>
 </Window>
