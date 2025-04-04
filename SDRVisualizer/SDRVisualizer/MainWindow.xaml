@@ -6,15 +6,14 @@
         SizeToContent="Manual">
 
     <Grid>
+        <!-- Rows: Controls, Spectrum, Waterfall -->
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
+            <RowDefinition Height="2*" />
+            <RowDefinition Height="3*" />
         </Grid.RowDefinitions>
 
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*" />
-        </Grid.ColumnDefinitions>
-        
+        <!-- Controls (Start/Stop Buttons) -->
         <StackPanel Orientation="Horizontal" 
                     HorizontalAlignment="Center" 
                     Grid.Row="0" 
@@ -25,11 +24,21 @@
                     Padding="10" Background="Gray" Foreground="White"/>
         </StackPanel>
         
+        <!-- Spectrum Display -->
         <Image x:Name="SpectrumImage" 
                Stretch="Fill"
                VerticalAlignment="Stretch"
                HorizontalAlignment="Stretch"
                Margin="5" 
                Grid.Row="1"/>
+
+        <!-- Waterfall Display -->
+        <Image x:Name="WaterfallImage" 
+               Stretch="Fill"
+               VerticalAlignment="Stretch"
+               HorizontalAlignment="Stretch"
+               Margin="5" 
+               Grid.Row="2"
+               Width="{Binding ElementName=SpectrumImage, Path=ActualWidth}"/> <!-- Bind Waterfall width to Spectrum width -->
     </Grid>
 </Window>
