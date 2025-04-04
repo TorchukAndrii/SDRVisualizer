@@ -3,11 +3,13 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 
 namespace SDRVisualizer;
 
 public partial class MainWindow : Window
 {
+    private readonly int[] _gradientPixels;
     private readonly int maxHistory = 200;
     private readonly List<int> spectrumData = new();
     private readonly Queue<int[]> waterfallData = new();
@@ -20,13 +22,26 @@ public partial class MainWindow : Window
     private WriteableBitmap waterfallBitmap;
     private byte[] spectrumLinePixels;
     private byte[] waterfallPixels;
-
+    
+    private DispatcherTimer _performTimer;
     public MainWindow()
     {
         InitializeComponent();
+        
         _dataGenerator = new FFTDataGenerator();
+        _gradientPixels = new GradientGenerator().GetGradientPixels();
+        InitializeTimer();
+
         SizeChanged += OnSizeChanged;
         Loaded += (s, e) => InitializeBitmaps();
+    }
+
+    private void InitializeTimer()
+    {
+        _performTimer = new DispatcherTimer();
+        _performTimer.Tick += performTimer_Tick;
+        _performTimer.Interval = new TimeSpan(0, 0, 0, 0, 20);
+
     }
 
     private void OnSizeChanged(object sender, SizeChangedEventArgs e)
@@ -38,6 +53,7 @@ public partial class MainWindow : Window
 
     private void InitializeBitmaps()
     {
+        
         int width = (int)Math.Max(SpectrumImage.ActualWidth, 1);
         int height = (int)Math.Max(SpectrumImage.ActualHeight, 1);
         spectrumBitmap = new WriteableBitmap(width, height, 96, 96, PixelFormats.Pbgra32, null);
@@ -55,16 +71,18 @@ public partial class MainWindow : Window
 
     private void Start_Click(object sender, RoutedEventArgs e)
     {
-        if (!isRunning)
+        _performTimer.Start();
+        /*if (!isRunning)
         {
             isRunning = true;
             cancellationTokenSource = new CancellationTokenSource();
             Task.Run(() => RunRenderLoop(cancellationTokenSource.Token));
-        }
+        }*/
     }
 
     private void Stop_Click(object sender, RoutedEventArgs e)
     {
+        _performTimer.Stop();
         isRunning = false;
         cancellationTokenSource?.Cancel();
     }
@@ -83,7 +101,22 @@ public partial class MainWindow : Window
             await Task.Delay(50, token);
         }
     }
-
+    private void performTimer_Tick(object sender, EventArgs e)
+    {
+        this.Perform(false);
+    }
+    private void Perform(bool force)
+    {
+        this.DrawLayers();
+        //base.Invalidate();
+    }
+    private void DrawLayers()
+    {
+        UpdateSpectrum();
+        RenderSpectrum();
+        UpdateWaterfall();
+        RenderWaterfall();
+    }
     private void RenderSpectrum()
     {
         int width = spectrumBitmap.PixelWidth;
@@ -169,13 +202,14 @@ public partial class MainWindow : Window
         for (int i = 1; i < spectrumData.Count; i++)
         {
             double x1 = gridPadding + (i - 1) * step;
-            double y1 = gridPadding + (spectrumData[i - 1] + 120) * gridHeight / 100;
+            double y1 = gridPadding + (1 - (spectrumData[i - 1] + 120) / 100.0) * gridHeight;  // Reverse Y-axis
             double x2 = gridPadding + i * step;
-            double y2 = gridPadding + (spectrumData[i] + 120) * gridHeight / 100;
+            double y2 = gridPadding + (1 - (spectrumData[i] + 120) / 100.0) * gridHeight;  // Reverse Y-axis
 
             DrawLine(pixels, width, height, (int)x1, (int)y1, (int)x2, (int)y2, Colors.Yellow);
         }
     }
+
 
     private void DrawLine(byte[] pixels, int width, int height, int x0, int y0, int x1, int y1, Color color)
     {
@@ -227,6 +261,7 @@ public partial class MainWindow : Window
 
         double scaleY = height / (double)maxHistory;
         double scaleX = width / (double)(waterfallData.Peek()?.Length ?? 1024);
+        
 
         int rowIndex = 0;
         foreach (var row in waterfallData.Reverse())
@@ -239,13 +274,22 @@ public partial class MainWindow : Window
                 for (int x = 0; x < width; x++)
                 {
                     int dataX = Math.Min((int)(x / scaleX), row.Length - 1);
-                    Color color = GetColorFromPower(row[dataX]);
+                
+                    // Normalize power value to [1, 100) range
+                    double powerValue = row[dataX];  
+                    int powerIndex = (int)((1 - ((powerValue + 120) / 100.0)) * 99);
+                    powerIndex = Math.Clamp(powerIndex, 0, 99);  
+                    int argb = _gradientPixels[powerIndex];
+
+                    byte b = (byte)(argb & 0xFF);
+                    byte g = (byte)((argb >> 8) & 0xFF);
+                    byte r = (byte)((argb >> 16) & 0xFF);
 
                     int index = y * stride + x * 4;
-                    waterfallPixels[index + 0] = color.B;
-                    waterfallPixels[index + 1] = color.G;
-                    waterfallPixels[index + 2] = color.R;
-                    waterfallPixels[index + 3] = 255;
+                    waterfallPixels[index + 0] = b;
+                    waterfallPixels[index + 1] = g;
+                    waterfallPixels[index + 2] = r;
+                    waterfallPixels[index + 3] = 255; // Alpha
                 }
             }
 
