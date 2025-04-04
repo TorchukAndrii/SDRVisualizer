@@ -3,7 +3,9 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Spectrum Analyzer" 
         Background="Black"
-        SizeToContent="Manual">
+        SizeToContent="Manual"
+        MinWidth="800" MinHeight="600"
+        Width="1280" Height="720">
 
     <Grid>
         <!-- Rows: Controls, Spectrum, Waterfall -->
