@@ -4,22 +4,22 @@
         xmlns:controls="clr-namespace:SDRVisualizer.Controls"
         Title="Spectrum Analyzer"
         Background="Black"
-        Width="2560" Height="1440"
+        Width="1280" Height="800"
         MinWidth="800" MinHeight="600">
 
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="2*"/>
-            <RowDefinition Height="3*"/>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="2*" />
+            <RowDefinition Height="3*" />
         </Grid.RowDefinitions>
 
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Grid.Row="0" Margin="10">
-            <Button Content="Start" Click="Start_Click" Padding="10"/>
-            <Button Content="Stop" Click="Stop_Click" Padding="10"/>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Grid.Row="0" Margin="10">
+            <Button Content="Start" Click="Start_Click" Padding="10" />
+            <Button Content="Stop" Click="Stop_Click" Padding="10" />
         </StackPanel>
 
-        <controls:SpectrumControl x:Name="SpectrumControl" Grid.Row="1" Margin="5"/>
-        <controls:WaterfallControl x:Name="WaterfallControl" Grid.Row="2" Margin="5"/>
+        <controls:SpectrumControl x:Name="SpectrumControl" Grid.Row="1" Margin="5" />
+        <controls:WaterfallControl x:Name="WaterfallControl" Grid.Row="2" Margin="5" />
     </Grid>
 </Window>

@@ -10,10 +10,10 @@ namespace SDRVisualizer.Controls;
 public partial class SpectrumControl : UserControl
 {
     private readonly BitmapBufferPool _bufferPool = new();
-    private RenderScheduler _renderScheduler;
     private WriteableBitmap _backgroundBitmap;
+    private readonly RenderScheduler _renderScheduler;
     private WriteableBitmap _spectrumBitmap;
-    private List<int> _spectrumData = new();
+    private int[] _spectrumData = Array.Empty<int>();
     private byte[] _spectrumLinePixels;
 
     public SpectrumControl()
@@ -25,7 +25,7 @@ public partial class SpectrumControl : UserControl
         SizeChanged += (_, _) => InitializeBitmaps();
     }
 
-    public void UpdateSpectrumData(List<int> data)
+    public void UpdateSpectrumData(int[] data)
     {
         _spectrumData = data;
         _renderScheduler.EnqueueRender(RenderSpectrum);
@@ -46,57 +46,59 @@ public partial class SpectrumControl : UserControl
     }
 
     private void DrawBackground(WriteableBitmap bitmap)
-{
-    DrawingVisual visual = new();
-    using (var dc = visual.RenderOpen())
     {
-        var width = bitmap.PixelWidth;
-        var height = bitmap.PixelHeight;
-
-        Pen gridPen = new(Brushes.LightGray, 0.5);
-        Typeface typeface = new("Arial");
-        Brush textBrush = Brushes.White;
-        double fontSize = 10;
-        double gridPadding = VisualizerConstants.GridPadding;
-        var gridWidth = width - 2 * gridPadding;
-        var gridHeight = height - 2 * gridPadding;
-
-        // Draw vertical grid lines and frequency labels
-        for (var i = 0; i <= 20; i++)
+        DrawingVisual visual = new();
+        using (var dc = visual.RenderOpen())
         {
-            var x = gridPadding + i * (gridWidth / 20.0);
-            dc.DrawLine(gridPen, new Point(x, gridPadding), new Point(x, height - gridPadding));
-            
-            // Calculate the frequency for each vertical line
-            var frequency = VisualizerConstants.FrequencyStart + i * (VisualizerConstants.FrequencyEnd - VisualizerConstants.FrequencyStart) / 20.0;
-            var freqText = new FormattedText($"{frequency:F1} MHz", CultureInfo.InvariantCulture,
-                FlowDirection.LeftToRight, typeface, fontSize, textBrush, 1.0);
-            dc.DrawText(freqText, new Point(x - freqText.Width / 2, height - gridPadding + 5));
+            var width = bitmap.PixelWidth;
+            var height = bitmap.PixelHeight;
+
+            Pen gridPen = new(Brushes.LightGray, 0.5);
+            Typeface typeface = new("Arial");
+            Brush textBrush = Brushes.White;
+            double fontSize = 10;
+            var gridPadding = VisualizerConstants.GridPadding;
+            var gridWidth = width - 2 * gridPadding;
+            var gridHeight = height - 2 * gridPadding;
+
+            // Draw vertical grid lines and frequency labels
+            for (var i = 0; i <= 20; i++)
+            {
+                var x = gridPadding + i * (gridWidth / 20.0);
+                dc.DrawLine(gridPen, new Point(x, gridPadding), new Point(x, height - gridPadding));
+
+                // Calculate the frequency for each vertical line
+                var frequency = VisualizerConstants.FrequencyStart +
+                                i * (VisualizerConstants.FrequencyEnd - VisualizerConstants.FrequencyStart) / 20.0;
+                var freqText = new FormattedText($"{frequency:F1} MHz", CultureInfo.InvariantCulture,
+                    FlowDirection.LeftToRight, typeface, fontSize, textBrush, 1.0);
+                dc.DrawText(freqText, new Point(x - freqText.Width / 2, height - gridPadding + 5));
+            }
+
+            // Draw horizontal grid lines and power labels
+            for (var i = 0; i <= 10; i++)
+            {
+                var y = gridPadding + (10 - i) * (gridHeight / 10.0);
+                dc.DrawLine(gridPen, new Point(gridPadding, y), new Point(width - gridPadding, y));
+
+                // Calculate the power for each horizontal line
+                var power = VisualizerConstants.MinPowerDbm +
+                            i * (VisualizerConstants.MaxPowerDbm - VisualizerConstants.MinPowerDbm) / 10.0;
+                var powerText = new FormattedText($"{power:F1} dBm", CultureInfo.InvariantCulture,
+                    FlowDirection.LeftToRight, typeface, fontSize, textBrush, 1.0);
+                dc.DrawText(powerText, new Point(gridPadding - powerText.Width - 5, y - powerText.Height / 2));
+            }
         }
 
-        // Draw horizontal grid lines and power labels
-        for (var i = 0; i <= 10; i++)
-        {
-            var y = gridPadding + (10 - i) * (gridHeight / 10.0);
-            dc.DrawLine(gridPen, new Point(gridPadding, y), new Point(width - gridPadding, y));
-            
-            // Calculate the power for each horizontal line
-            var power = VisualizerConstants.MinPowerDbm + i * (VisualizerConstants.MaxPowerDbm - VisualizerConstants.MinPowerDbm) / 10.0;
-            var powerText = new FormattedText($"{power:F1} dBm", CultureInfo.InvariantCulture,
-                FlowDirection.LeftToRight, typeface, fontSize, textBrush, 1.0);
-            dc.DrawText(powerText, new Point(gridPadding - powerText.Width - 5, y - powerText.Height / 2));
-        }
+        // Render the visual to the background bitmap
+        RenderTargetBitmap rtb = new(bitmap.PixelWidth, bitmap.PixelHeight, 96, 96, PixelFormats.Pbgra32);
+        rtb.Render(visual);
+        bitmap.Lock();
+        rtb.CopyPixels(new Int32Rect(0, 0, bitmap.PixelWidth, bitmap.PixelHeight), bitmap.BackBuffer,
+            bitmap.BackBufferStride * bitmap.PixelHeight, bitmap.BackBufferStride);
+        bitmap.AddDirtyRect(new Int32Rect(0, 0, bitmap.PixelWidth, bitmap.PixelHeight));
+        bitmap.Unlock();
     }
-
-    // Render the visual to the background bitmap
-    RenderTargetBitmap rtb = new(bitmap.PixelWidth, bitmap.PixelHeight, 96, 96, PixelFormats.Pbgra32);
-    rtb.Render(visual);
-    bitmap.Lock();
-    rtb.CopyPixels(new Int32Rect(0, 0, bitmap.PixelWidth, bitmap.PixelHeight), bitmap.BackBuffer,
-        bitmap.BackBufferStride * bitmap.PixelHeight, bitmap.BackBufferStride);
-    bitmap.AddDirtyRect(new Int32Rect(0, 0, bitmap.PixelWidth, bitmap.PixelHeight));
-    bitmap.Unlock();
-}
 
 
     private void RenderSpectrum()
@@ -129,13 +131,13 @@ public partial class SpectrumControl : UserControl
 
     private void DrawSpectrumLine(byte[] pixels, int width, int height)
     {
-        var gridPadding = VisualizerConstants.GridPadding;  // Padding for the grid
+        var gridPadding = VisualizerConstants.GridPadding; // Padding for the grid
         var gridWidth = width - 2 * gridPadding;
         var gridHeight = height - 2 * gridPadding;
         var step = gridWidth / VisualizerConstants.FFTSize;
 
         // Loop through the spectrum data and draw the spectrum line
-        for (var i = 1; i < _spectrumData.Count; i++)
+        for (var i = 1; i < _spectrumData.Length; i++)
         {
             // Calculate the X and Y coordinates
             var x1 = gridPadding + (i - 1) * step;
@@ -150,5 +152,4 @@ public partial class SpectrumControl : UserControl
             DrawingHelpers.DrawLine(pixels, width, height, (int)x1, (int)y1, (int)x2, (int)y2, Colors.Yellow);
         }
     }
-
 }

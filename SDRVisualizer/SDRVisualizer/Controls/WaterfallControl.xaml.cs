@@ -24,12 +24,12 @@ public partial class WaterfallControl : UserControl
         SizeChanged += (_, _) => InitializeBitmap();
     }
 
-    public void AddSpectrumSnapshot(List<int> row)
+    public void AddSpectrumSnapshot(int[] row)
     {
         if (_data.Count >= VisualizerConstants.MaxHistory)
             _data.Dequeue();
 
-        _data.Enqueue(row.ToArray());
+        _data.Enqueue(row);
         _renderScheduler.EnqueueRender(RenderWaterfall);
     }
 
@@ -68,9 +68,10 @@ public partial class WaterfallControl : UserControl
             for (var x = 0; x < width; x++)
             {
                 var dataX = Math.Min((int)(x / scaleX), row.Length - 1);
-                
-                var normalized = (VisualizerConstants.MaxPowerDbm - row[dataX]) / (VisualizerConstants.MaxPowerDbm - VisualizerConstants.MinPowerDbm);
-                
+
+                var normalized = (VisualizerConstants.MaxPowerDbm - row[dataX]) /
+                                 (VisualizerConstants.MaxPowerDbm - VisualizerConstants.MinPowerDbm);
+
                 var colorIndex = (int)((1 - normalized) * (VisualizerConstants.GradientResolution - 1));
                 colorIndex = Math.Clamp(colorIndex, 0, VisualizerConstants.GradientResolution - 1);
 

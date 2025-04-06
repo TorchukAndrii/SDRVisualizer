@@ -1,5 +1,4 @@
-﻿using System.Collections.Concurrent;
-using System.Windows.Threading;
+﻿using System.Windows.Threading;
 
 namespace SDRVisualizer.Helpers;
 
@@ -16,25 +15,19 @@ public class RenderScheduler
 
     public void EnqueueRender(Action renderAction)
     {
-        // Cancel any ongoing render task before scheduling a new one
         _cancellationTokenSource?.Cancel();
         _cancellationTokenSource = new CancellationTokenSource();
 
         var token = _cancellationTokenSource.Token;
 
-        // Queue the render action to be executed in the dispatcher
         _dispatcher.BeginInvoke(() =>
         {
             try
             {
-                if (!token.IsCancellationRequested)
-                {
-                    renderAction();
-                }
+                if (!token.IsCancellationRequested) renderAction();
             }
             catch (TaskCanceledException)
             {
-                // Handle task cancellation gracefully if needed
             }
         });
     }

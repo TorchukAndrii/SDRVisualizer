@@ -3,6 +3,6 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Background="Transparent">
     <Grid>
-        <Image x:Name="SpectrumImage" Stretch="Fill"/>
+        <Image x:Name="SpectrumImage" Stretch="Fill" />
     </Grid>
 </UserControl>
