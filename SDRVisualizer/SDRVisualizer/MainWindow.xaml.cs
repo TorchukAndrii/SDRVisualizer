@@ -1,4 +1,7 @@
-﻿using System.Windows;
+﻿using System;
+using System.Windows;
+using System.Timers;
+using SDRVisualizer.Helpers;
 using Timer = System.Timers.Timer;
 
 namespace SDRVisualizer
@@ -7,6 +10,7 @@ namespace SDRVisualizer
     {
         private Timer updateTimer;
         private FFTDataGenerator _fftDataGenerator;
+
         public MainWindow()
         {
             _fftDataGenerator = new FFTDataGenerator();
@@ -33,9 +37,10 @@ namespace SDRVisualizer
 
         private void UpdateVisualization()
         {
-            int[] newData = _fftDataGenerator.GetRow();
-            SpectrumControl.UpdateSpectrum(newData);
-            WaterfallControl.UpdateWaterfall(newData);
+            List<int> newData = _fftDataGenerator.GetRow();
+            SpectrumControl.UpdateSpectrumData(newData);
+            WaterfallControl.AddSpectrumSnapshot(newData);
         }
     }
+
 }

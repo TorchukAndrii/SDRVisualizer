@@ -19,7 +19,7 @@ namespace SDRVisualizer
             _data = new int[rows, cols];
             _rand = new Random();
             rowIndex = 0;
-            GenerateData();
+            GenerateData(true);
         }
 
         private void GenerateData(bool showBorders = false, bool addSpikes = false)
@@ -80,14 +80,14 @@ namespace SDRVisualizer
             }
         }
 
-        public int[] GetRow()
+        public List<int> GetRow()
         {
             var row = new int[_data.GetLength(1)];
             for (var i = 0; i < _data.GetLength(1); i++) row[i] = _data[rowIndex, i];
 
             rowIndex++;
             if (rowIndex == rows) rowIndex = 0;
-            return row;
+            return row.ToList();
         }
 
         public void ResetData()
