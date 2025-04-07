@@ -152,4 +152,9 @@ public partial class SpectrumControl : UserControl
             DrawingHelpers.DrawLine(pixels, width, height, (int)x1, (int)y1, (int)x2, (int)y2, Colors.Yellow);
         }
     }
+    
+    public void Cleanup()
+    {
+        _renderScheduler.CancelAll();
+    }
 }

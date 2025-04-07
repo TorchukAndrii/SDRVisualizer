@@ -93,4 +93,9 @@ public partial class WaterfallControl : UserControl
 
         _waterfallBitmap.WritePixels(new Int32Rect(0, 0, width, height), _waterfallPixels, stride, 0);
     }
+    
+    public void Cleanup()
+    {
+        _renderScheduler.CancelAll();
+    }
 }

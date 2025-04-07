@@ -1,4 +1,5 @@
-﻿using System.Windows;
+﻿using System.ComponentModel;
+using System.Windows;
 using Timer = System.Timers.Timer;
 
 namespace SDRVisualizer;
@@ -14,6 +15,8 @@ public partial class MainWindow : Window
 
         InitializeComponent();
         InitializeTimer();
+        
+        this.Closing += MainWindow_Closing;
     }
 
     private void InitializeTimer()
@@ -37,5 +40,14 @@ public partial class MainWindow : Window
         var newData = _fftDataGenerator.GetRow();
         SpectrumControl.UpdateSpectrumData(newData);
         WaterfallControl.AddSpectrumSnapshot(newData);
+    }
+    
+    private void MainWindow_Closing(object? sender, CancelEventArgs e)
+    {
+        updateTimer?.Stop();
+        updateTimer?.Dispose();
+
+        SpectrumControl.Cleanup();
+        WaterfallControl.Cleanup();
     }
 }
